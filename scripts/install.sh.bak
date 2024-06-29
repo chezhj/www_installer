@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Check if the release tag argument is provided
+if [ -z "$1" ]; then
+    echo "Usage: $0 <release-tag>"
+    exit 1
+fi
+
+RELEASE_TAG="$1"
+NEW_PATH="./checklist_$RELEASE_TAG"
+SRC_PATH="./source_$RELEASE_TAG"
+
+cd ~/domains/vdwaal.net || exit
+
+# Ensure the checklist_new directory exists
+mkdir -p "$NEW_PATH"
+
+# Clone the repository into CLONE_PATH with the specified RELEASE_TAG
+git clone --branch "$RELEASE_TAG" https://github.com/chezhj/SmartTrainingChecklist.git "$SRC_PATH"
+
+# Copy the required files and directories from the cloned directory
+cp -r "$SRC_PATH/checklist" "$NEW_PATH/"
+cp -r "$SRC_PATH/smart_training_checklist" "$NEW_PATH/"
+cp "$SRC_PATH/db.sqlite3" "$NEW_PATH/"
+cp "$SRC_PATH/passenger_wsgi.py" "$NEW_PATH/"
+cp "$SRC_PATH/manage.py" "$NEW_PATH/"
+cp "$SRC_PATH/requirements.txt" "$NEW_PATH/"
