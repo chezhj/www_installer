@@ -119,8 +119,18 @@ source ~/domains/parse_env.sh ~/domains/${DOMAIN}/public_html/.htaccess
 
 cd ~/domains/${DOMAIN}
 
+# install new modules
+pip install -r requirements.txt 
+
+read -p "Did pip install run without errors (y/n) " -n 1 -r answer
+if [[ "$answer" != "y" && "$answer" != "Y" ]]; then
+   echo
+   echo "Aborting"
+   exit 1
+fi
+
 if [ ${DATABASE_SOURCE}  = "production" ]; then
-    # Migrate the product database
+    # Migrate the database
     echo "Migrating the database..."
     python manage.py migrate
 fi
@@ -141,7 +151,7 @@ fi
 echo "Starting the server..."
 output=$(cloudlinux-selector start --json --interpreter python --app-root domains/${DOMAIN})
 # Check if the result is "success"
-if [[ "$output" != *"\"result\": \"success\"* ]]; then
+if [[ "$output" != *"\"result\": \"success\""* ]]; then
     echo "Error: Failed to stop the current application."
     exit 1
 fi
