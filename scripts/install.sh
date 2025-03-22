@@ -17,6 +17,22 @@ if [ ! -f "$CONFIG_FILE" ]; then
 fi
 source "$CONFIG_FILE"
 
+# Source the installer configuration file
+INSTALLER_CONFIG_FILE="../installer_config.sh"
+if [ ! -f "$INSTALLER_CONFIG_FILE" ]; then
+    echo "Error: Installer configuration file $INSTALLER_CONFIG_FILE does not exist"
+    exit 1
+fi
+source "$INSTALLER_CONFIG_FILE"
+
+# Check for updates to the www_installer package
+echo "Checking for updates to the installer..."
+latest_version=$(git ls-remote --tags "$INSTALLER_GITHUB_URL" | awk -F'/' '{print $NF}' | sort -V | tail -n 1)
+
+if [ "$INSTALLER_VERSION" != "$latest_version" ]; then
+    echo "Warning: A newer version of www_installer ($latest_version) is available. Current version: $INSTALLER_VERSION."
+fi
+
 # Print the loaded variables for verification
 echo "Loaded configuration:"
 echo "DOMAIN=${DOMAIN}"
