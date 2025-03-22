@@ -101,12 +101,17 @@ if [ ${DATABASE_SOURCE}  = "production" ]; then
     cp "domains/${APP}_${old_version}/db.sqlite3" domains/${DOMAIN}
 fi
 
-# Activate the virtual environment
-echo "Activating the virtual environment..."
-source /home/vdwanet/virtualenv/domains/${DOMAIN}/3.8/bin/activate
-
 # Zet virtual gebaseerd op variabelen in htaccess
 source ~/domains/parse_env.sh ~/domains/${DOMAIN}/public_html/.htaccess
+
+# Activate the virtual environment
+if [ -z "$PASSENGER_PYTHON" ]; then
+    echo "Error: PASSENGER_PYTHON is not set. Ensure it is defined in the .htaccess file."
+    exit 1
+fi
+echo "Activating the virtual environment using $PASSENGER_PYTHON..."
+source "$(dirname "$PASSENGER_PYTHON")/activate"
+
 
 cd ~/domains/${DOMAIN}
 
