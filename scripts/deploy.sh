@@ -77,8 +77,7 @@ init() {
     # Verify directory app_$tag exists
     app_source_path="${APP}_${RELEASE_TAG}"
     
-    cd ~
-    current_version="v"$(grep -oP '__version__ = "\K\S+' domains/${DOMAIN}/${VERSION_FILE} | tr -d '"' )
+    current_version="v"$(grep -oP '__version__ = "\K\S+' ~/domains/${DOMAIN}/${VERSION_FILE} | tr -d '"' )
     echo "Found current version ${current_version}"
 }
 init "$@"	
