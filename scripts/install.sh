@@ -48,7 +48,7 @@ cd ~/domains/ || exit
 mkdir -p "$NEW_PATH"
 
 # Clone the repository into CLONE_PATH with the specified RELEASE_TAG
-git clone --branch "$RELEASE_TAG" "$GITHUB_URL" "$SRC_PATH"
+git clone --quit --branch "$RELEASE_TAG" "$GITHUB_URL" "$SRC_PATH"
 
 
 # Copy the required files and directories from the cloned directory
