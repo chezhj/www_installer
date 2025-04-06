@@ -26,6 +26,7 @@ if [[ "$STAGE_OPTION" == "stage" && "$STAGE_OPTION" == "from-stage" ]]; then
     exit 1
 fi
 
+
 # Function to execute a stage
 execute_stage() {
     local stage_2_execute=$1
@@ -60,13 +61,26 @@ init() {
     APP=$1
     RELEASE_TAG=$2
 
+    #check if ${DOMAIN_BASE_DIR} is set and exists
+    if [ -z "${DOMAIN_BASE_DIR}" ]; then
+        echo "Error: DOMAIN_BASE_DIR is not set. Please set it in the environment."
+        exit 1
+    fi  
+    #check if ${DOMAIN_BASE_DIR} has a trailing slash
+    if [[ "${DOMAIN_BASE_DIR}" != */ ]]; then
+        echo "Error: DOMAIN_BASE_DIR should have a trailing slash. Please set it in the environment."
+        exit 1
+    fi
+
     # Source the configuration file based on the application
-    CONFIG_FILE="${APP}_config.sh"
+    CONFIG_FILE="${DOMAIN_BASE_DIR}${APP}_config.sh"
     if [ ! -f "$CONFIG_FILE" ]; then
         echo "Error: Configuration file $CONFIG_FILE does not exist"
         exit 1
     fi
     source "$CONFIG_FILE"
+
+    
 
     # Print the loaded variables for verification
     echo "Loaded configuration:"
@@ -75,9 +89,9 @@ init() {
     echo "GITHUB_URL=${GITHUB_URL}"
 
     # Verify directory app_$tag exists
-    app_source_path="${APP}_${RELEASE_TAG}"
+    app_source_path="${DOMAIN_BASE_DIR}${APP}_${RELEASE_TAG}"
     
-    current_version="v"$(grep -oP '__version__ = "\K\S+' ~/domains/${DOMAIN}/${VERSION_FILE} | tr -d '"' )
+    current_version="v"$(grep -oP '__version__ = "\K\S+' "${DOMAIN_BASE_DIR}${DOMAIN}/${VERSION_FILE}" | tr -d '"' )
     echo "Found current version ${current_version}"
 }
 init "$@"	
@@ -102,7 +116,7 @@ execute_stage 1 "Verify source directory & source version" stage_1
 # Stage 2: Stop current application
 stage_2() {
     echo "Stopping the current application..."
-    local output=$(cloudlinux-selector stop --json --interpreter python --app-root domains/${DOMAIN})
+    local output=$(cloudlinux-selector stop --json --interpreter python --app-root "${DOMAIN_BASE_DIR}${DOMAIN}")
     if [[ "$output" != *"\"result\": \"success\""* ]]; then
         echo "Error: Failed to stop the current application."
         echo "Output: $output"
@@ -114,10 +128,12 @@ execute_stage 2 "Stop current application" stage_2
 # Stage 3: Backup & move current application
 stage_3() {
     echo "Creating backup of ${DOMAIN}"
-    tar -czf "${APP}_current.tar.gz" "$DOMAIN/"
+    tar -czf "${APP}_current.tar.gz" "${DOMAIN_BASE_DIR}${DOMAIN}"
 
     # Copy the files in public_html directory to the new directory
-    cp -r ${DOMAIN}/public_html ${app_source_path}/
+    cp -r "${DOMAIN_BASE_DIR}${DOMAIN}/public_html" "${app_source_path}/"
+
+    # copy database if needed
 
     echo "Moving ${DOMAIN} to ${APP}_${current_version}"
     read -p "Are you sure you want to continue? (y/n) " -n 1 -r answer
@@ -128,23 +144,23 @@ stage_3() {
     fi
     echo
     echo "Continuing..."
-    mv domains/${DOMAIN} "domains/${APP}_${current_version}"
+    mv "${DOMAIN_BASE_DIR}${DOMAIN}" "${DOMAIN_BASE_DIR}${APP}_${current_version}"
 }
 execute_stage 3 "Backup & move current application" stage_3
 
 # Stage 4: Copy new application & database
 stage_4() {
     echo "Moving the new application to ${DOMAIN}..."
-    mv "domains/${app_source_path}" "domains/${DOMAIN}"
+    mv "${app_source_path}" "${DOMAIN_BASE_DIR}${DOMAIN}"
 
     if [ ${DATABASE_SOURCE}  = "production" ]; then
-        if [ -f "domains/${DOMAIN}/db.sqlite3" ]; then
+        if [ -f "${DOMAIN_BASE_DIR}${DOMAIN}/db.sqlite3" ]; then
             echo "Moving database from ${RELEASE_TAG} to date-stamped copy of the database..."
             local today=$(date +%Y%m%d%H%M%S) 
-            mv "domains/${DOMAIN}/db.sqlite3" "db.sqlite3.$today"
+            mv "${DOMAIN_BASE_DIR}${DOMAIN}/db.sqlite3" "${DOMAIN_BASE_DIR}${APP}_db.sqlite3.$today"
         fi
         echo "Copying the production database to new production directory."
-        cp "domains/${APP}_${current_version}/db.sqlite3" domains/${DOMAIN}
+        cp "${DOMAIN_BASE_DIR}${APP}_${current_version}/db.sqlite3" "${DOMAIN_BASE_DIR}${DOMAIN}"
     fi
 }
 execute_stage 4 "Copy new application & database" stage_4
@@ -157,9 +173,9 @@ stage_5() {
     fi
     echo "Activating the virtual environment using $PYTHON_ENV..."
     source ${PYTHON_ENV} 
-    source ~/domains/parse_env.sh ~/domains/${DOMAIN}/public_html/.htaccess
+    source "${DOMAIN_BASE_DIR}parse_env.sh" "${DOMAIN_BASE_DIR}${DOMAIN}/public_html/.htaccess"
 
-    cd ~/domains/${DOMAIN}
+    cd "${DOMAIN_BASE_DIR}${DOMAIN}"
     echo "Installing new modules..."
     pip install -r requirements.txt 
 
@@ -190,7 +206,7 @@ stage_6() {
     fi
 
     echo "Starting the server..."
-    output=$(cloudlinux-selector start --json --interpreter python --app-root domains/${DOMAIN})
+    output=$(cloudlinux-selector start --json --interpreter python --app-root "${DOMAIN_BASE_DIR}${DOMAIN}")
     if [[ "$output" != *"\"result\": \"success\""* ]]; then
         echo "Error: Failed to start the current application."
         echo "Output: $output"
