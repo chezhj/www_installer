@@ -134,6 +134,15 @@ stage_3() {
     cp -r "${DOMAIN_BASE_DIR}${DOMAIN}/public_html" "${app_source_path}/"
 
     # copy database if needed
+    if [ ${DATABASE_SOURCE}  = "production" ]; then
+        if [ -f "${DOMAIN_BASE_DIR}${DOMAIN}/db.sqlite3" ]; then
+            echo "Moving database from ${RELEASE_TAG} to date-stamped copy of the database..."
+            local today=$(date +%Y%m%d%H%M%S) 
+            mv "${DOMAIN_BASE_DIR}${DOMAIN}/db.sqlite3" "${DOMAIN_BASE_DIR}${APP}_db.sqlite3.$today"
+        fi
+        echo "Copying the production database to new production directory."
+        cp "${DOMAIN_BASE_DIR}${APP}_${current_version}/db.sqlite3" "${DOMAIN_BASE_DIR}${DOMAIN}"
+    fi
 
     echo "Moving ${DOMAIN} to ${APP}_${current_version}"
     read -p "Are you sure you want to continue? (y/n) " -n 1 -r answer
@@ -153,15 +162,7 @@ stage_4() {
     echo "Moving the new application to ${DOMAIN}..."
     mv "${app_source_path}" "${DOMAIN_BASE_DIR}${DOMAIN}"
 
-    if [ ${DATABASE_SOURCE}  = "production" ]; then
-        if [ -f "${DOMAIN_BASE_DIR}${DOMAIN}/db.sqlite3" ]; then
-            echo "Moving database from ${RELEASE_TAG} to date-stamped copy of the database..."
-            local today=$(date +%Y%m%d%H%M%S) 
-            mv "${DOMAIN_BASE_DIR}${DOMAIN}/db.sqlite3" "${DOMAIN_BASE_DIR}${APP}_db.sqlite3.$today"
-        fi
-        echo "Copying the production database to new production directory."
-        cp "${DOMAIN_BASE_DIR}${APP}_${current_version}/db.sqlite3" "${DOMAIN_BASE_DIR}${DOMAIN}"
-    fi
+
 }
 execute_stage 4 "Copy new application & database" stage_4
 
