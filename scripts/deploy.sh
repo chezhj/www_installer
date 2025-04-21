@@ -134,7 +134,7 @@ stage_3() {
     # Copy the files in public_html directory to the new directory
     cp -r "${DOMAIN_BASE_DIR}${DOMAIN}/public_html" "${app_source_path}/"
 
-    # copy database if needed
+    # copy database that is coming from git/src if it's there 
     if [ ${DATABASE_SOURCE}  = "production" ]; then
         if [ -f "${app_source_path}/db.sqlite3" ]; then
             echo "Moving database from ${RELEASE_TAG} to date-stamped copy of the database..."
