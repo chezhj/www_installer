@@ -61,6 +61,16 @@ init() {
     APP=$1
     RELEASE_TAG=$2
 
+    
+
+    # Source the configuration file based on the application
+    CONFIG_FILE="${APP}_config.sh"
+    if [ ! -f "$CONFIG_FILE" ]; then
+        echo "Error: Configuration file $CONFIG_FILE does not exist in current directory."
+        exit 1
+    fi
+    source "$CONFIG_FILE"
+    
     #check if ${DOMAIN_BASE_DIR} is set and exists
     if [ -z "${DOMAIN_BASE_DIR}" ]; then
         echo "Error: DOMAIN_BASE_DIR is not set. Please set it in the environment."
@@ -71,15 +81,6 @@ init() {
         echo "Error: DOMAIN_BASE_DIR should have a trailing slash. Please set it in the environment."
         exit 1
     fi
-
-    # Source the configuration file based on the application
-    CONFIG_FILE="${DOMAIN_BASE_DIR}${APP}_config.sh"
-    if [ ! -f "$CONFIG_FILE" ]; then
-        echo "Error: Configuration file $CONFIG_FILE does not exist"
-        exit 1
-    fi
-    source "$CONFIG_FILE"
-
     
 
     # Print the loaded variables for verification
@@ -135,13 +136,13 @@ stage_3() {
 
     # copy database if needed
     if [ ${DATABASE_SOURCE}  = "production" ]; then
-        if [ -f "${DOMAIN_BASE_DIR}${DOMAIN}/db.sqlite3" ]; then
+        if [ -f "${app_source_path}/db.sqlite3" ]; then
             echo "Moving database from ${RELEASE_TAG} to date-stamped copy of the database..."
             local today=$(date +%Y%m%d%H%M%S) 
-            mv "${DOMAIN_BASE_DIR}${DOMAIN}/db.sqlite3" "${DOMAIN_BASE_DIR}${APP}_db.sqlite3.$today"
+            mv "${app_source_path}/db.sqlite3" "${DOMAIN_BASE_DIR}${APP}_db.sqlite3.$today"
         fi
         echo "Copying the production database to new production directory."
-        cp "${DOMAIN_BASE_DIR}${APP}_${current_version}/db.sqlite3" "${DOMAIN_BASE_DIR}${DOMAIN}"
+        cp "${DOMAIN_BASE_DIR}${DOMAIN}/db.sqlite3" "${app_source_path}"
     fi
 
     echo "Moving ${DOMAIN} to ${APP}_${current_version}"
