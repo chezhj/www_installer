@@ -179,7 +179,7 @@ stage_5() {
 
     cd "${DOMAIN_BASE_DIR}${DOMAIN}"
     echo "Installing new modules..."
-    pip install -r requirements.txt 
+    pip install -r requirements.txt --no-deps
 
     read -p "Did pip install run without errors (y/n) " -n 1 -r answer
     if [[ "$answer" != "y" && "$answer" != "Y" ]]; then
