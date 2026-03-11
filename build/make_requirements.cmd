@@ -1,20 +1,24 @@
 @echo off
-REM Change directory to project root (parent of this script's directory)
-cd /d "%~dp0..\.."
+REM Run from the project directory (called as a pre-bump hook via PATH).
+REM Do NOT cd — the hook runner already sets CWD to the project root.
 
+REM --- Activate local venv if present (fixes missing poetry/python in hook env) ---
+if exist ".venv\Scripts\activate.bat" (
+    call ".venv\Scripts\activate.bat"
+)
 
 echo Exporting requirements to requirements.txt...
 poetry export -f requirements.txt --output requirements.txt --without-hashes
+if errorlevel 1 (
+    echo poetry export failed! Aborting bump.
+    exit /b 1
+)
 
-
-set SETTINGS_MODULE=%1
-if not "%SETTINGS_MODULE%"=="" (
-    echo Running Django tests with %SETTINGS_MODULE%...
-    python manage.py test --settings=%SETTINGS_MODULE%
-    if %ERRORLEVEL% NEQ 0 (
-        echo Tests failed! Aborting bump.
-        exit /b 1
-    )
+echo Running tests...
+poetry run pytest
+if errorlevel 1 (
+    echo Tests failed! Aborting bump.
+    exit /b 1
 )
 
 set NPM_DIR=
@@ -26,7 +30,7 @@ if not "%NPM_DIR%"=="" (
     echo Found package.json in %NPM_DIR%, running npm build...
     pushd "%NPM_DIR%"
     npm run build
-    if %ERRORLEVEL% NEQ 0 (
+    if errorlevel 1 (
         popd
         echo npm build failed! Aborting.
         exit /b 1
