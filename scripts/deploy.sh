@@ -191,6 +191,13 @@ stage_5() {
     if [ ${DATABASE_SOURCE}  = "production" ]; then
         echo "Migrating the database..."
         python manage.py migrate
+
+        # Checklist content lives in the fixture, so the preserved production
+        # database needs it loaded on every deploy. Not needed with
+        # DATABASE_SOURCE="repository": that database already ships with the
+        # content, and it is not migrated here either.
+        echo "Loading checklist content..."
+        python manage.py checklist_content import --replace --noinput
     fi
 
     echo "Collecting static files..."
