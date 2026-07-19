@@ -13,6 +13,6 @@ FILES_TO_COPY=(
     "project-directory"
 )
 
-#define wether database should be used from the repo, or the source 
-#DATABASE_SOURCE="production"
-DATABASE_SOURCE="repository"
+#define wether database should be used from the repo, or the source
+DATABASE_SOURCE="production"
+#DATABASE_SOURCE="repository"
