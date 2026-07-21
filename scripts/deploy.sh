@@ -196,8 +196,14 @@ stage_5() {
         # database needs it loaded on every deploy. Not needed with
         # DATABASE_SOURCE="repository": that database already ships with the
         # content, and it is not migrated here either.
-        echo "Loading checklist content..."
-        python manage.py checklist_content import --replace --noinput
+        # Guarded on command availability since deploy.sh also runs against
+        # older tags that predate this management command.
+        if python manage.py help --commands 2>/dev/null | grep -qx "checklist_content"; then
+            echo "Loading checklist content..."
+            python manage.py checklist_content import --replace --noinput
+        else
+            echo "Skipping checklist content import: command not available in this release."
+        fi
     fi
 
     echo "Collecting static files..."
