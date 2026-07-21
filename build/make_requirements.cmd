@@ -40,5 +40,11 @@ if not "%NPM_DIR%"=="" (
     echo No package.json found in frontend/client/web, skipping npm build.
 )
 
+REM Stage the regenerated artifacts so the following `cz bump` commit (and thus the
+REM tag) ships them. Django hosts with no Node rely on the tracked web/static/dist.
+echo Staging regenerated release artifacts...
+if exist "requirements.txt" git add requirements.txt
+if exist "web\static\dist" git add web\static\dist
+
 echo All pre-bump checks passed!
 exit /b 0
