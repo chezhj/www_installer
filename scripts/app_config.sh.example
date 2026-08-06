@@ -1,0 +1,76 @@
+# <app>_config.sh — per-app deploy configuration (new CI/move-based model)
+#
+# Sourced by activate.sh / rollback.sh as ${APP}_config.sh, i.e. for APP=swatchbook
+# this file is swatchbook_config.sh:
+#     cd ~/domains && ~/deploy-tools/scripts/activate.sh swatchbook v0.7.0
+#     cd ~/domains && ~/deploy-tools/scripts/rollback.sh  swatchbook
+#
+# WHERE THIS LIVES
+#   - The filled-in <app>_config.sh lives on the deploy host in ~/domains/ (the same
+#     directory activate.sh is run from — it is sourced from the CWD).
+#   - It is owned by the APP repo, not by www_installer: keep it there under deploy/,
+#     and let the app's release workflow ship it to ~/domains/<app>_config.sh.
+#   - This file is SECRET-FREE by design, so it is safe to commit to the app repo.
+#     Real secrets live in shared/<app>/.env (see BOOTSTRAP.md); the MySQL password
+#     lives only in the host-side .cnf that MYSQL_CNF_PATH points at.
+#
+# Copy this to <app>_config.sh and fill in the real values. Example values below are
+# swatchbook's — replace them.
+
+# --- Required for every app ---------------------------------------------------------
+
+# The production hostname; also the name of the LIVE directory under DOMAIN_BASE_DIR.
+# Must be a REAL directory on the server, never a symlink (see BOOTSTRAP.md).
+DOMAIN="swatchbook.vdwaal.net"
+
+# Parent of the live ${DOMAIN} dir, the releases/ dir and the shared/ dir.
+# MUST end with a trailing slash (activate.sh enforces this).
+DOMAIN_BASE_DIR="/home/vdwanet/domains/"
+
+# Virtualenv activate script for this app (CloudLinux "Setup Python App").
+# Match the Python version the app targets.
+PYTHON_ENV="/home/vdwanet/virtualenv/domains/${DOMAIN}/3.11/bin/activate"
+
+# File that carries `__version__ = "X.Y.Z"`; the deploy tag must be v<that>.
+# Path is relative to the release root.
+VERSION_FILE="config/__init__.py"
+
+# Django settings module exported before manage.py runs. Set it explicitly so no app
+# depends on activate.sh's built-in fallback (config.settings.prod).
+DJANGO_SETTINGS_MODULE="config.settings.prod"
+
+# URL the deploy workflow's smoke test hits after start; must return HTTP 200.
+SMOKE_URL="https://swatchbook.vdwaal.net/"
+
+# --- Database -----------------------------------------------------------------------
+
+# "sqlite" (default) or "mysql".
+DATABASE_ENGINE="sqlite"
+
+# For sqlite only. "production" keeps the live db.sqlite3 across deploys (symlinked
+# from shared/<app>/ and migrated on every deploy). "repository" ships the db with the
+# release and does NOT migrate — used for apps whose data is part of the build.
+DATABASE_SOURCE="production"
+
+# For DATABASE_ENGINE="mysql" only — otherwise leave unset/commented:
+#   MYSQL_DB_NAME="cpaneluser_appdb"
+#   MYSQL_CNF_PATH="/home/vdwanet/domains/.my_<app>.cnf"   # host-only, chmod 600
+
+# --- Optional -----------------------------------------------------------------------
+
+# Extra paths inside a release that must be symlinked to persistent shared storage
+# instead of being wiped every deploy. Format: "release_relative_path:shared_name".
+# activate.sh creates shared/<app>/<shared_name> and links it in.
+#   e.g. media served from public_html/media:
+# SHARED_PATHS=(
+#     "public_html/media:media"
+# )
+SHARED_PATHS=()
+
+# Management commands to run after `migrate` (only when migrations run). Each is
+# skipped automatically if the command isn't available in the release being deployed.
+#   e.g.
+# POST_MIGRATE_COMMANDS=(
+#     "checklist_content import --replace --noinput"
+# )
+POST_MIGRATE_COMMANDS=()

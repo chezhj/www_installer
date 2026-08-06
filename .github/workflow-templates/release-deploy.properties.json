@@ -1,0 +1,7 @@
+{
+  "name": "Release & Deploy (www_installer)",
+  "description": "Tag-triggered pipeline: test, GitHub release, rsync ship, then activate/smoke/rollback via the shared chezhj/www_installer reusable workflow.",
+  "iconName": "rocket",
+  "categories": ["Deployment", "Python", "Django"],
+  "filePatterns": ["manage\\.py$", "pyproject\\.toml$"]
+}

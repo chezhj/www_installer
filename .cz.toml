@@ -1,0 +1,16 @@
+# Commitizen config for releasing the deploy tooling itself.
+# Release flow (see README): `cz bump` bumps this version + writes the changelog +
+# creates a v<version> tag, then `git push --follow-tags`. The tag push triggers
+# .github/workflows/sync-tools.yml, which pins ~/deploy-tools on the server to it.
+#
+# Unlike the app repos, this repo has no requirements.txt / frontend to regenerate, so
+# there is no pre-bump artifact hook here.
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "1.0.0"
+tag_format = "v$version"
+update_changelog_on_bump = true
+major_version_zero = false
+version_files = [
+    ".cz.toml:version",
+]

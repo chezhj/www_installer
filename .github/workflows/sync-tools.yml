@@ -1,0 +1,75 @@
+name: Sync deploy tools to server
+
+# www_installer's OWN deploy: update the server-side tool checkout (~/deploy-tools) to a
+# released version, independent of any app deploy. Runs on every version tag push (create
+# tags with `cz bump` — see README) and can be dispatched manually to pin a specific ref.
+#
+# Requires SSH_* secrets defined on THIS repo (Settings > Secrets and variables > Actions):
+#   SSH_HOST, SSH_USER, SSH_PRIVATE_KEY, SSH_KNOWN_HOSTS, and optionally SSH_PORT.
+# (On a GitHub org you could define these once at org level; on a personal account they are
+# set per repo — the same deploy key/values also go in each app repo that deploys.)
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Tag or branch to check out on the server (default: latest tag)."
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: sync-deploy-tools
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Update ~/deploy-tools on the server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Resolve target ref
+        id: ref
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+        run: |
+          # Manual dispatch may pin any ref; a tag push targets the pushed tag.
+          if [ -n "${INPUT_REF}" ]; then
+            echo "ref=${INPUT_REF}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Clone or update tool dir, then pin to target ref
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          TARGET_REF: ${{ steps.ref.outputs.ref }}
+          REPO_URL: "https://github.com/${{ github.repository }}.git"
+        run: |
+          echo "Pinning ~/deploy-tools to ${TARGET_REF}"
+          # Self-bootstrapping: `test -d …/.git || git clone` creates the checkout on the
+          # first run and is a no-op afterwards, then fetch + checkout pins the ref. So the
+          # first version-tag push creates ~/deploy-tools with no manual clone on the
+          # server. Only REPO_URL and the ref are expanded here (on the runner); the inner
+          # single-quoted command and its ~ expand on the SERVER.
+          out=$(ssh -i ~/.ssh/id_deploy -p "${SSH_PORT:-22}" "${SSH_USER}@${SSH_HOST}" \
+            "bash -lc 'test -d ~/deploy-tools/.git || git clone ${REPO_URL} ~/deploy-tools; git -C ~/deploy-tools fetch --tags --prune --force && git -C ~/deploy-tools checkout ${TARGET_REF} && git -C ~/deploy-tools describe --tags --always'")
+          echo "$out"
+          {
+            echo "## Deploy tools synced"
+            echo ""
+            echo "- target ref: \`${TARGET_REF}\`"
+            echo "- server now at: \`$(echo "$out" | tail -n1)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
