@@ -14,22 +14,22 @@
 #     Real secrets live in shared/<app>/.env (see BOOTSTRAP.md); the MySQL password
 #     lives only in the host-side .cnf that MYSQL_CNF_PATH points at.
 #
-# Copy this to <app>_config.sh and fill in the real values. Example values below are
-# swatchbook's — replace them.
+# Copy this to <app>_config.sh and fill in the real values. The values below are
+# PLACEHOLDERS (<app>, <user>) — replace every one with the app's real values.
 
 # --- Required for every app ---------------------------------------------------------
 
 # The production hostname; also the name of the LIVE directory under DOMAIN_BASE_DIR.
 # Must be a REAL directory on the server, never a symlink (see BOOTSTRAP.md).
-DOMAIN="swatchbook.vdwaal.net"
+DOMAIN="<app>.example.com"
 
 # Parent of the live ${DOMAIN} dir, the releases/ dir and the shared/ dir.
 # MUST end with a trailing slash (activate.sh enforces this).
-DOMAIN_BASE_DIR="/home/vdwanet/domains/"
+DOMAIN_BASE_DIR="/home/<user>/domains/"
 
 # Virtualenv activate script for this app (CloudLinux "Setup Python App").
 # Match the Python version the app targets.
-PYTHON_ENV="/home/vdwanet/virtualenv/domains/${DOMAIN}/3.11/bin/activate"
+PYTHON_ENV="/home/<user>/virtualenv/domains/${DOMAIN}/3.11/bin/activate"
 
 # File that carries `__version__ = "X.Y.Z"`; the deploy tag must be v<that>.
 # Path is relative to the release root.
@@ -40,7 +40,7 @@ VERSION_FILE="config/__init__.py"
 DJANGO_SETTINGS_MODULE="config.settings.prod"
 
 # URL the deploy workflow's smoke test hits after start; must return HTTP 200.
-SMOKE_URL="https://swatchbook.vdwaal.net/"
+SMOKE_URL="https://<app>.example.com/"
 
 # --- Database -----------------------------------------------------------------------
 
@@ -54,7 +54,7 @@ DATABASE_SOURCE="production"
 
 # For DATABASE_ENGINE="mysql" only — otherwise leave unset/commented:
 #   MYSQL_DB_NAME="cpaneluser_appdb"
-#   MYSQL_CNF_PATH="/home/vdwanet/domains/.my_<app>.cnf"   # host-only, chmod 600
+#   MYSQL_CNF_PATH="/home/<user>/domains/.my_<app>.cnf"    # host-only, chmod 600
 
 # --- Optional -----------------------------------------------------------------------
 
