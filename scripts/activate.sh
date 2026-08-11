@@ -225,17 +225,24 @@ record_state 3
 CURRENT_STAGE="move directories"
 mv "${LIVE_PATH}" "${parked_path}"
 mv "${NEW_RELEASE_PATH}" "${LIVE_PATH}"
+# Record the swap immediately: from here on the previous release is parked and
+# the new one is live, so any later failure must roll back via the move-back
+# path (LAST_STEP>=4), not a plain restart. Recording after the steps below
+# would leave rollback thinking nothing moved and restarting the broken new
+# release in place.
+record_state 4
 
 # cloudlinux-selector's `start` reads public_html/.htaccess before rewriting
 # it with its own PassengerAppRoot/SetEnv directives (from its own registry,
 # not from the file's prior content) - and crashes with FileNotFoundError if
 # it's missing entirely, rather than creating one fresh. A freshly-rsynced
-# release always lacks it (never committed to git - purely a cPanel-managed
-# artifact). Nothing of ours depends on its prior content: real secrets come
-# from shared/.env, and DJANGO_SETTINGS_MODULE is hardcoded in
+# release may lack public_html entirely (it's created by collectstatic below,
+# and apps without media never commit it), so create the dir before placing
+# the placeholder. Nothing of ours depends on its prior content: real secrets
+# come from shared/.env, and DJANGO_SETTINGS_MODULE is hardcoded in
 # passenger_wsgi.py - so an empty placeholder is enough.
+mkdir -p "${LIVE_PATH}/public_html"
 [ -f "${LIVE_PATH}/public_html/.htaccess" ] || touch "${LIVE_PATH}/public_html/.htaccess"
-record_state 4
 
 # --- Step 5: install dependencies into the shared venv ---
 CURRENT_STAGE="pip install"
