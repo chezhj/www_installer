@@ -199,8 +199,10 @@ if [ "${run_migrations}" = "1" ]; then
             exit 1
         fi
         MYSQL_BACKUP="${SHARED_DIR}/${MYSQL_DB_NAME}.backup_${TS}.sql.gz"
-        mysqldump --single-transaction --quick \
-            --defaults-extra-file="${MYSQL_CNF_PATH}" "${MYSQL_DB_NAME}" \
+        # --defaults-extra-file must be the FIRST argument, or the client rejects it
+        # as an "unknown variable" (it is parsed as a config-file variable otherwise).
+        mysqldump --defaults-extra-file="${MYSQL_CNF_PATH}" \
+            --single-transaction --quick "${MYSQL_DB_NAME}" \
             | gzip > "${MYSQL_BACKUP}"
         echo "MySQL backed up to ${MYSQL_BACKUP}"
     fi
