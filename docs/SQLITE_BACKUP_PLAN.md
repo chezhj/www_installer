@@ -125,7 +125,9 @@ Release: `cz bump` in www_installer → `sync-tools.yml` updates `~/deploy-tools
 on the server.
 
 Server (**[server]**, once):
-- `sqlite3 --version`: write the version down here, once.
+- [x] `sqlite3 --version` on the server: **3.26.0** (checked 2026-09-22). Everything
+  used here (`.backup`, `.restore`, `.timeout`, `-bail`) predates it; `VACUUM INTO`
+  (3.27) would not work, and is not used.
 - The next simflow deploy logs `backup ok: …`. Copy that backup to a scratch
   path, open it, and check that recent rows are there.
 - Before simflow's step 4.1, run `--restore-db` once as a dry run against a
