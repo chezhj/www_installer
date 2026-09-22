@@ -1,8 +1,10 @@
 # Plan: consistent, WAL-safe SQLite backup and restore
 
 **Created**: 2026-09-22
-**Status**: steps 1–4 built, local verification (step 5) passing
-(`tests/sqlite_backup_test.sh`, 44 checks). Remaining: release, server checks, step 6.
+**Status**: **released in v1.3.0** (2026-09-22, PR #4). Steps 1–4 built; local
+verification passing (`tests/sqlite_backup_test.sh`, 44 checks); server `sqlite3`
+3.26.0. Step 6 done: simflow 4.1 unblocked (simflow PR #36). Remaining: the
+server check of the first backup after the bump (simflow step 4.2).
 **Requested by**: simflow `docs/PRE_RELEASE_PLAN.md`, step 0.2. That plan's step 4.1
 (turning on WAL) stays blocked until this ships.
 **Affects**: every SQLite app deployed with these scripts (simflow, swatchbook, …),
@@ -121,7 +123,7 @@ Local (this container, before pushing):
 4. With `sqlite3` removed from `PATH`: both functions fail cleanly, and `activate.sh` stops before the stop step.
 5. `shellcheck scripts/*.sh`.
 
-Release: `cz bump` in www_installer → `sync-tools.yml` updates `~/deploy-tools`
+[x] Released as **v1.3.0**. Release: `cz bump` in www_installer → `sync-tools.yml` updates `~/deploy-tools`
 on the server.
 
 Server (**[server]**, once):
