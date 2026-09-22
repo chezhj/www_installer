@@ -50,16 +50,12 @@ properly, and work the same in journal mode and in WAL mode.
 #   -wal can never be applied on top of the restored file.
 ```
 
-**Engine**: use the `sqlite3` CLI if it is on the server, otherwise the app's own
-venv Python (`$(dirname "$PYTHON_ENV")/python`) with `sqlite3.Connection.backup()`.
-Two ways, so that we don't depend on a check nobody has run yet:
-
-- Nobody has checked that the `sqlite3` CLI exists on the cPanel host. The
-  pre-release plan's spec assumes it does.
-- System `python3` on CloudLinux is often 3.6, and `Connection.backup()` needs
-  3.7 or later. So the fallback is the **venv** Python, which Django already
-  requires to have a working `sqlite3` module. That venv is 3.11.
-- If neither is available, fail. Never fall back to `cp`.
+**Engine**: the `sqlite3` CLI only. It is confirmed present on the cPanel host,
+and `.backup` / `.restore` have existed since 3.6.11. The library checks
+`command -v sqlite3` first and fails with a clear message if it is missing. It
+never falls back to `cp`, and there is no second engine: a fallback that never
+runs on the real server is a code path nobody tests, and it would tie the
+backup to `PYTHON_ENV` for nothing.
 
 Rules both functions follow:
 - Busy timeout of 30 s (`.timeout 30000` / `timeout=30`), so a writer that is
@@ -114,14 +110,14 @@ Local (this container, before pushing):
    connection is still open), kill the writer, run `sqlite_restore`, open the
    database again. It has exactly the rows in the backup and passes
    `integrity_check`. Repeat with `cp` to show that it corrupts or brings rows back.
-4. Run the CLI path and the Python fallback (`PATH` without `sqlite3`) through all of the above.
+4. With `sqlite3` removed from `PATH`: both functions fail cleanly, and `activate.sh` stops before the stop step.
 5. `shellcheck scripts/*.sh`.
 
 Release: `cz bump` in www_installer → `sync-tools.yml` updates `~/deploy-tools`
 on the server.
 
 Server (**[server]**, once):
-- `command -v sqlite3; sqlite3 --version` records which engine the server uses.
+- `sqlite3 --version`: write the version down here, once.
 - The next simflow deploy logs `backup ok: …`. Copy that backup to a scratch
   path, open it, and check that recent rows are there.
 - Before simflow's step 4.1, run `--restore-db` once as a dry run against a
