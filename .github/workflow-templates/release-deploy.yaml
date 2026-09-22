@@ -51,7 +51,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install poetry
+          # Pinned: an unpinned `pip install poetry` has resolved to Poetry 1.0.10, which
+          # cannot read the PEP 621 [project] table and fails with "'name' is a required
+          # property". A range makes pip fail loudly instead of downgrading.
+          pip install "poetry>=2.0,<3"   # <-- EDIT per app if its poetry.lock needs a newer 2.x
           poetry install --no-interaction
 
       - name: Run tests
@@ -110,7 +113,7 @@ jobs:
 
       - name: Generate requirements.txt from the lockfile
         run: |
-          pip install poetry poetry-plugin-export
+          pip install "poetry>=2.0,<3" "poetry-plugin-export>=1.9,<2"   # pinned, see Install dependencies
           poetry export --without-hashes -f requirements.txt -o requirements.txt
 
       - name: Attach requirements.txt to the release
