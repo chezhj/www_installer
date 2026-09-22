@@ -17,7 +17,14 @@ Move-based, non-interactive ("Option B"). Each release is rsynced into
 promotes the new one, installs deps, migrates, and restarts — with `rollback.sh` to revert.
 
 - `scripts/activate.sh` — bring a release live. `activate.sh <app> <tag>`.
-- `scripts/rollback.sh` — revert a failed activate using its state file. `rollback.sh <app> [--restore-db]`.
+- `scripts/rollback.sh` — revert a failed activate using its state file.
+  `rollback.sh <app> [--restore-db [--force-restore]]`.
+- `scripts/sqlite_lib.sh` — sourced by both: consistent, WAL-safe SQLite backup/restore
+  through the `sqlite3` CLI's online backup API (never a plain `cp`), plus backup
+  retention (`SQLITE_BACKUP_KEEP`). Requires `sqlite3` on the server.
+- `tests/sqlite_backup_test.sh` — run `bash tests/sqlite_backup_test.sh` before
+  releasing a change to the scripts; drives the library under a live writer and
+  `activate.sh` / `rollback.sh` end to end against a stubbed server tree.
 - `scripts/app_config.sh.example` — per-app config template. The real `<app>_config.sh`
   is owned by the **app repo** (`deploy/<app>_config.sh`) and shipped to `~/domains/`.
 - `docs/BOOTSTRAP.md` — one-time, by-hand server setup (shared state, tool checkout).

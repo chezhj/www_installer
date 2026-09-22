@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # rollback.sh - revert a failed activate.sh run using the state file it wrote.
-# Usage: ./rollback.sh <application> [--restore-db]
+# Usage: ./rollback.sh <application> [--restore-db [--force-restore]]
 #
 # Directory model matches activate.sh (Option B, move-based): the live path
 # is always a real directory, never a symlink. On a failed deploy that got
@@ -14,17 +14,34 @@
 # reinstall its requirements.txt into the shared venv, start. Database is
 # left untouched unless --restore-db is passed explicitly - see the warning
 # this prints at the end for why that's a separate, deliberate step.
+#
+# --restore-db (sqlite) first takes a consistent safety copy of the current
+# database (db.sqlite3.pre_rollback_<ts>), then restores the activate-time
+# backup through SQLite's backup API - never a file copy, which would leave a
+# stale -wal next to the restored file for SQLite to replay onto it. If the
+# current database is too damaged to copy, the rollback stops; re-run with
+# --force-restore to move db.sqlite3 and its -wal/-shm aside into
+# db.sqlite3.pre_rollback_<ts>/ and put the backup in their place.
 
 set -eEo pipefail
 
+# shellcheck source-path=SCRIPTDIR source=sqlite_lib.sh
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/sqlite_lib.sh"
+
 APP=$1
 RESTORE_DB=0
+FORCE_RESTORE=0
 for arg in "$@"; do
     [ "$arg" = "--restore-db" ] && RESTORE_DB=1
+    [ "$arg" = "--force-restore" ] && FORCE_RESTORE=1
 done
 
-if [ -z "$APP" ]; then
-    echo "Usage: $0 <application> [--restore-db]"
+if [ -z "$APP" ] || [[ "$APP" == --* ]]; then
+    echo "Usage: $0 <application> [--restore-db [--force-restore]]"
+    exit 1
+fi
+if [ "${FORCE_RESTORE}" = "1" ] && [ "${RESTORE_DB}" != "1" ]; then
+    echo "Error: --force-restore only makes sense together with --restore-db."
     exit 1
 fi
 
@@ -81,6 +98,40 @@ start_app() {
     fi
 }
 
+TS=$(date +%Y%m%d%H%M%S)
+LIVE_DB="${SHARED_DIR}/db.sqlite3"
+PRE_ROLLBACK="${SHARED_DIR}/db.sqlite3.pre_rollback_${TS}"
+while [ -e "${PRE_ROLLBACK}" ]; do
+    # Second-resolution names can collide on a quick re-run; never reuse one.
+    sleep 1
+    TS=$(date +%Y%m%d%H%M%S)
+    PRE_ROLLBACK="${SHARED_DIR}/db.sqlite3.pre_rollback_${TS}"
+done
+
+# Everything that can refuse a sqlite --restore-db runs here, before anything is
+# stopped or moved: a refusal then leaves the deploy exactly as it was, and the
+# same command can simply be re-run (e.g. with --force-restore).
+if [ "${RESTORE_DB}" = "1" ] && [ "${migration_may_have_run}" = "1" ] \
+        && [ "${DATABASE_ENGINE}" = "sqlite" ]; then
+    if [ -z "${SQLITE_BACKUP}" ] || [ ! -f "${SQLITE_BACKUP}" ]; then
+        echo "Error: sqlite backup ${SQLITE_BACKUP} not found."
+        exit 1
+    fi
+    _sqlite_verify "${SQLITE_BACKUP}"
+    if [ "${FORCE_RESTORE}" != "1" ]; then
+        # Safety copy of the current (migrated) data, so the restore itself can
+        # be undone. Taken with the backup API, so it is consistent even though
+        # the app may still be running at this point.
+        if ! sqlite_backup "${LIVE_DB}" "${PRE_ROLLBACK}"; then
+            echo "Error: could not take a safety copy of the current database."
+            echo "Nothing was stopped, moved or restored. If the database is"
+            echo "damaged and you want the backup regardless, re-run with:"
+            echo "  ./rollback.sh ${APP} --restore-db --force-restore"
+            exit 1
+        fi
+    fi
+fi
+
 if [ "${LAST_STEP}" -lt 4 ]; then
     # Nothing was moved - the live directory is still the original release.
     echo "No directories were moved. Restarting the current release."
@@ -100,7 +151,6 @@ set +e
 cloudlinux-selector stop --json --interpreter python --app-root "${LIVE_PATH}" >/dev/null 2>&1
 set -e
 
-TS=$(date +%Y%m%d%H%M%S)
 FAILED_PARK_PATH="${DOMAIN_BASE_DIR}releases/${APP}_failed_${RELEASE_TAG}_${TS}"
 echo "Parking failed release at ${FAILED_PARK_PATH}"
 mv "${LIVE_PATH}" "${FAILED_PARK_PATH}"
@@ -118,13 +168,28 @@ fi
 
 if [ "${RESTORE_DB}" = "1" ] && [ "${migration_may_have_run}" = "1" ]; then
     if [ "${DATABASE_ENGINE}" = "sqlite" ]; then
-        if [ -z "${SQLITE_BACKUP}" ] || [ ! -f "${SQLITE_BACKUP}" ]; then
-            echo "Error: sqlite backup ${SQLITE_BACKUP} not found."
+        if [ "${FORCE_RESTORE}" = "1" ]; then
+            # The current database may be unreadable, so no backup API here:
+            # move it aside together with its sidecars. Moving the -wal/-shm
+            # is the point - left behind, they would be replayed onto the
+            # restored file.
+            mkdir "${PRE_ROLLBACK}"
+            for f in "${LIVE_DB}" "${LIVE_DB}-wal" "${LIVE_DB}-shm" "${LIVE_DB}-journal"; do
+                if [ -e "$f" ]; then mv "$f" "${PRE_ROLLBACK}/"; fi
+            done
+            echo "Current database moved aside to ${PRE_ROLLBACK}/"
+            cp "${SQLITE_BACKUP}" "${LIVE_DB}.restoring"
+            mv "${LIVE_DB}.restoring" "${LIVE_DB}"
+            _sqlite_verify "${LIVE_DB}"
+            echo "SQLite restored from ${SQLITE_BACKUP} (forced)."
+        elif ! sqlite_restore "${SQLITE_BACKUP}" "${LIVE_DB}"; then
+            # .restore is one transaction: on failure the database is as it was.
+            echo "Error: restore failed. The code is rolled back to ${PREVIOUS_VERSION}"
+            echo "but the app is STOPPED and the database still holds ${RELEASE_TAG}'s data"
+            echo "(safety copy: ${PRE_ROLLBACK}). Fix the cause, then either restore by"
+            echo "hand or start the app as-is."
             exit 1
         fi
-        cp "${SHARED_DIR}/db.sqlite3" "${SHARED_DIR}/db.sqlite3.pre_rollback_${TS}" 2>/dev/null || true
-        cp "${SQLITE_BACKUP}" "${SHARED_DIR}/db.sqlite3"
-        echo "SQLite restored from ${SQLITE_BACKUP}."
     elif [ "${DATABASE_ENGINE}" = "mysql" ]; then
         if [ -z "${MYSQL_BACKUP}" ] || [ ! -f "${MYSQL_BACKUP}" ]; then
             echo "Error: mysql backup ${MYSQL_BACKUP} not found."

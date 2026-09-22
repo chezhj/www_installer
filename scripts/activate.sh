@@ -36,6 +36,9 @@
 
 set -eEo pipefail
 
+# shellcheck source-path=SCRIPTDIR source=sqlite_lib.sh
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/sqlite_lib.sh"
+
 APP=$1
 RELEASE_TAG=$2
 
@@ -59,6 +62,7 @@ fi
 DATABASE_ENGINE="${DATABASE_ENGINE:-sqlite}"
 SHARED_PATHS=("${SHARED_PATHS[@]:-}")
 POST_MIGRATE_COMMANDS=("${POST_MIGRATE_COMMANDS[@]:-}")
+SQLITE_BACKUP_KEEP="${SQLITE_BACKUP_KEEP:-10}"
 
 NEW_RELEASE_PATH="${DOMAIN_BASE_DIR}releases/${APP}_${RELEASE_TAG}"
 LIVE_PATH="${DOMAIN_BASE_DIR}${DOMAIN}"
@@ -187,8 +191,11 @@ if [ "${run_migrations}" = "1" ]; then
     TS=$(date +%Y%m%d%H%M%S)
     if [ "${DATABASE_ENGINE}" = "sqlite" ]; then
         SQLITE_BACKUP="${SHARED_DIR}/db.sqlite3.backup_${TS}"
-        cp "${SHARED_DIR}/db.sqlite3" "${SQLITE_BACKUP}"
-        echo "SQLite backed up to ${SQLITE_BACKUP}"
+        # Online backup while the app is still running: consistent and
+        # WAL-safe (see sqlite_lib.sh). Taken before the stop so a failed
+        # backup aborts the deploy with no downtime.
+        sqlite_backup "${SHARED_DIR}/db.sqlite3" "${SQLITE_BACKUP}"
+        sqlite_prune_backups "${SHARED_DIR}" "${SQLITE_BACKUP_KEEP}" "${SQLITE_BACKUP}"
     elif [ "${DATABASE_ENGINE}" = "mysql" ]; then
         if [ -z "${MYSQL_DB_NAME}" ] || [ -z "${MYSQL_CNF_PATH}" ]; then
             echo "Error: DATABASE_ENGINE=mysql requires MYSQL_DB_NAME and MYSQL_CNF_PATH."

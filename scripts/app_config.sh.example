@@ -74,3 +74,10 @@ SHARED_PATHS=()
 #     "checklist_content import --replace --noinput"
 # )
 POST_MIGRATE_COMMANDS=()
+
+# For sqlite + DATABASE_SOURCE="production" only. activate.sh backs the live db up
+# before every migrate (SQLite's online backup API via the sqlite3 CLI, which must be
+# installed on the server) and then keeps only the newest N of those backups - and,
+# separately, of rollback.sh's pre_rollback safety copies - in shared/<app>/.
+# Default 10.
+# SQLITE_BACKUP_KEEP=10
