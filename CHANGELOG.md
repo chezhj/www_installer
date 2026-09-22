@@ -1,3 +1,15 @@
+## v1.3.0 (2026-09-22)
+
+### Feat
+
+- **sqlite**: WAL-safe backup and restore via the SQLite backup API (#4)
+
+## v1.2.6 (2026-08-13)
+
+### Fix
+
+- **activate**: pass --defaults-extra-file first so the mysql backup works
+
 ## v1.2.5 (2026-08-11)
 
 ### Fix
