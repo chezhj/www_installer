@@ -58,7 +58,7 @@ runs on the real server is a code path nobody tests, and it would tie the
 backup to `PYTHON_ENV` for nothing.
 
 Rules both functions follow:
-- Busy timeout of 30 s (`.timeout 30000` / `timeout=30`), so a writer that is
+- Busy timeout of 30 s (`.timeout 30000`), so a writer that is
   busy right now delays the backup instead of making it fail.
 - Write to `<dest>.tmp`, run `PRAGMA integrity_check` on it (or `quick_check` if
   the file is over about 200 MB), and only then `mv` it to `<dest>`. If a run is
