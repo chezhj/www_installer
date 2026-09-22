@@ -72,6 +72,10 @@ DATABASE_SOURCE="production"      # production = persist server DB + migrate;
 # handled automatically. Empty if the app has no such paths:
 SHARED_PATHS=()
 
+# sqlite + production only: how many pre-migrate backups to keep in shared/<app>/
+# (default 10). Backups need the sqlite3 CLI on the server.
+# SQLITE_BACKUP_KEEP=10
+
 # Optional "manage.py <args>" run once after migrate. Each is skipped (not an error)
 # if the activated release lacks that command. Use for content that ships with the app:
 # POST_MIGRATE_COMMANDS=("<mgmt command> ...")
@@ -141,7 +145,9 @@ gh run watch --repo <owner>/<repo>
 
 The smoke test hits `SMOKE_URL` and auto-rolls-back on failure, so a bad first deploy
 won't leave the site down. Manual rollback: `cd ~/domains && ~/deploy-tools/scripts/rollback.sh <app>`
-(add `--restore-db` to also revert data if a migration ran).
+(add `--restore-db` to also revert data if a migration ran; for SQLite it first takes a
+`db.sqlite3.pre_rollback_<ts>` safety copy and refuses before touching anything if it
+can't - add `--force-restore` only when the live database is known to be damaged).
 
 ---
 

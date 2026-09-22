@@ -1,6 +1,8 @@
 # Plan: consistent, WAL-safe SQLite backup and restore
 
 **Created**: 2026-09-22
+**Status**: steps 1–4 built, local verification (step 5) passing
+(`tests/sqlite_backup_test.sh`, 44 checks). Remaining: release, server checks, step 6.
 **Requested by**: simflow `docs/PRE_RELEASE_PLAN.md`, step 0.2. That plan's step 4.1
 (turning on WAL) stays blocked until this ships.
 **Affects**: every SQLite app deployed with these scripts (simflow, swatchbook, …),
@@ -84,6 +86,12 @@ heartbeat writes between the backup and the stop, which `--restore-db` would los
 3. `--force-restore` path, when the live file can't be opened: move `db.sqlite3`,
    `-wal` and `-shm` together into `pre_rollback_<ts>/` first, then copy the backup
    into place. Moving the WAL files as well is required: that is the fix for C.
+
+**As built**: the checks and the safety copy run *before* the app is stopped or
+any directory is moved, not at the restore step. If the safety copy is refused
+there, nothing has changed yet, so the same command can simply be re-run with
+`--force-restore`. Doing it late would leave the code already swapped back, and a
+re-run would then fail because the parked release has already moved.
 
 `rollback.sh` does not check whether the stop worked (`set +e`, output thrown
 away). That is one more reason to restore through a connection: SQLite's locking
