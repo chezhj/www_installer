@@ -69,8 +69,12 @@ creates a `v<version>` tag:
 
 ```bash
 cz bump
-git push --follow-tags
+git push
+git push origin v<version>
 ```
+
+Push the tag by name: commitizen creates a lightweight tag, which `git push --follow-tags`
+silently skips (it only pushes annotated tags).
 
 The tag push triggers `sync-tools.yml`, which pins `~/deploy-tools` on the server to that
 tag — so all apps run that version's scripts on their next deploy. Without commitizen,
