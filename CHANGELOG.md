@@ -1,3 +1,10 @@
+## v1.3.1 (2026-09-23)
+
+### Fix
+
+- **sqlite**: prune backups without process substitution
+- **template**: pin poetry to 2.x in the deploy workflow template (#6)
+
 ## v1.3.0 (2026-09-22)
 
 ### Feat
