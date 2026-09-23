@@ -148,13 +148,16 @@ sqlite_prune_backups() {
     for prefix in db.sqlite3.backup_ db.sqlite3.pre_rollback_; do
         # Names embed a %Y%m%d%H%M%S timestamp, so a reverse name sort is newest
         # first - and, unlike mtime, it survives a copy or touch.
-        while IFS= read -r entry; do
-            [ -z "$entry" ] && continue
-            [ "$entry" = "$protected" ] && continue
-            echo "Pruning old backup ${entry}"
-            rm -rf -- "$entry"
-        done < <(find "$dir" -maxdepth 1 -name "${prefix}*" ! -name '*.tmp' \
-                    ! -name '*-wal' ! -name '*-shm' ! -name '*-journal' \
-                    | sort -r | tail -n +"$((keep + 1))")
+        # A plain pipe, not process substitution: jailed shells on the host
+        # have no /dev/fd, so `< <(...)` fails there.
+        find "$dir" -maxdepth 1 -name "${prefix}*" ! -name '*.tmp' \
+                ! -name '*-wal' ! -name '*-shm' ! -name '*-journal' \
+            | sort -r | tail -n +"$((keep + 1))" \
+            | while IFS= read -r entry; do
+                [ -z "$entry" ] && continue
+                [ "$entry" = "$protected" ] && continue
+                echo "Pruning old backup ${entry}"
+                rm -rf -- "$entry"
+            done
     done
 }
