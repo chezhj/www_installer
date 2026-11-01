@@ -73,6 +73,17 @@ git push
 git push origin v<version>
 ```
 
+Commitizen is a Python tool and is not a dependency of this repo; install it on the machine
+you release from (`pipx install commitizen`, then `pipx ensurepath`). If `cz` is "not found"
+even though commitizen is installed (typically the Python `Scripts` folder is not on PATH,
+common on Windows), run it as a module instead, which does not depend on PATH:
+
+```bash
+py -m commitizen bump        # or: python -m commitizen bump
+```
+
+With `uv`, `uvx --from commitizen cz bump` runs it without installing anything.
+
 Push the tag by name: commitizen creates a lightweight tag, which `git push --follow-tags`
 silently skips (it only pushes annotated tags).
 
