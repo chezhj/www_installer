@@ -4,6 +4,9 @@
 # lightweight, so --follow-tags would skip it). The tag push triggers
 # .github/workflows/sync-tools.yml, which pins ~/deploy-tools on the server to it.
 #
+# commitizen is installed on the releasing machine, not in this repo (no Python env here).
+# If `cz` is not on PATH, use `py -m commitizen bump` (or `python -m commitizen bump`).
+#
 # Unlike the app repos, this repo has no requirements.txt / frontend to regenerate, so
 # there is no pre-bump artifact hook here.
 [tool.commitizen]
