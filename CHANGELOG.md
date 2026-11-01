@@ -1,3 +1,9 @@
+## v1.3.2 (2026-09-23)
+
+### Fix
+
+- **chmod**: adding chmod to media dir
+
 ## v1.3.1 (2026-09-23)
 
 ### Fix
