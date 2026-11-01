@@ -172,6 +172,13 @@ for entry in "${SHARED_PATHS[@]}"; do
     release_path="${entry%%:*}"
     shared_name="${entry##*:}"
     mkdir -p "${SHARED_DIR}/${shared_name}"
+    # Apache (a different user from the Passenger app user) serves these
+    # paths (e.g. /media/...) and must be able to traverse them; a default
+    # umask can leave them 700, which makes Apache return 403. chmod after
+    # mkdir so an already-existing 700 dir is fixed too. Only the shared
+    # path dirs are opened up - SHARED_DIR, .env, .my.cnf and the sqlite
+    # file stay private.
+    chmod 755 "${SHARED_DIR}/${shared_name}"
     rm -rf "${NEW_RELEASE_PATH:?}/${release_path}"
     mkdir -p "$(dirname "${NEW_RELEASE_PATH}/${release_path}")"
     ln -s "${SHARED_DIR}/${shared_name}" "${NEW_RELEASE_PATH}/${release_path}"
